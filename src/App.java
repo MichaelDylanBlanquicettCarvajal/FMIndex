@@ -9,6 +9,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Scanner;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
@@ -18,53 +19,171 @@ public class App {
 
     public static void main(String[] args) throws Exception {
 
-        String palabra = "abaaba$";
-        HashMap<String, Integer> hola = sufijos(palabra);
+        Scanner scanner = new Scanner(System.in);
+        Scanner scanner_p0_1 = new Scanner(System.in);
+        Scanner scanner_p0_2 = new Scanner(System.in);
+        Scanner scanner_p2 = new Scanner(System.in);
+        Scanner scanner_p4 = new Scanner(System.in);
+        boolean salir = false;
 
-        TreeMap<String, Integer> hello = sorting(hola);
+        TreeMap<String, Integer> arreglo_ordenado = null;
+        String secuencia = null;
+        List<String> segmentos = null;
+        Map<String, List<Integer>> tally = null;
+        List<String[]> lf = null;
 
-        for (Map.Entry<String, Integer> en : hello.entrySet()) {
-            String key = en.getKey();
-            Integer val = en.getValue();
+        while (!salir) {
+            System.out.println("Menú:");
+            System.out.println("0. Cargar archivo fasta y fastq.");
+            System.out.println("1. Crear arreglo de sufijo en base al archivo fasta.");
+            System.out.println("2. Mapeo de lecturas usando busqueda binaria.");
+            System.out.println("3. Construir FM-Index en base al archivo fasta.");
+            System.out.println("4. Mapeo de lecturas usando indice FM.");
+            System.out.println("5. Salir");
+            System.out.print("Elige una opción: ");
 
-            System.out.println(key + " " + val);
+            int opcion = scanner.nextInt();
 
+            switch (opcion) {
+                case 0:
+                    System.out.println("Por favor escriba la dirección del archivo fasta:");
+                    String fasta = scanner_p0_1.nextLine();
+                    secuencia = new String();
+                    secuencia = leer_fasta(fasta);
+                    if (secuencia != null) {
+                        System.out.println("Secuencia cargada exitosamente: " + secuencia);
+                    } else {
+                        break;
+                    }
+                    System.out.println("Por favor escriba la dirección del archivo fastq:");
+                    String fastq = scanner_p0_2.nextLine();
+                    segmentos = new ArrayList<>();
+                    segmentos = leer_fastq(fastq);
+                    if (segmentos != null) {
+                        System.out.println(
+                                "Segmentos cargados exitosamente: \n Ejemplo primer segmento:" + segmentos.get(0));
+                    } else {
+                        System.out.println("No se cargaron los segmentos");
+                        break;
+                    }
+
+                    break;
+                case 1:
+                    HashMap<String, Integer> arreglo_sufijos = sufijos(secuencia);
+                    arreglo_ordenado = new TreeMap<>();
+                    arreglo_ordenado = sorting(arreglo_sufijos);
+                    Integer size = arreglo_ordenado.size();
+                    Integer count = 0;
+
+                    System.out.println("Primeros 5 sufijos:");
+                    for (Map.Entry<String, Integer> en : arreglo_ordenado.entrySet()) {
+                        if (count < 5) {
+                            System.out.println("Sufijo:" + en.getKey() + " -> Posicion:" + en.getValue());
+                        }
+                        count++;
+                    }
+
+                    System.out.println("\nÚltimos 5 sufijos:");
+                    count = 0;
+                    for (Map.Entry<String, Integer> en : arreglo_ordenado.entrySet()) {
+                        if (count >= size - 5) {
+                            System.out.println("Sufijo:" + en.getKey() + " -> Posicion:" + en.getValue());
+                        }
+                        count++;
+                    }
+                    break;
+
+                case 2:
+                    System.out.println(
+                            "Anote el sufijo que desea buscar en el arbol de sufijos calculado en el punto 1 (obligatorio):");
+                    String sufijo = scanner_p2.nextLine();
+                    // Lógica para la opción 2
+                    Integer pos = busqueda_binaria(arreglo_ordenado, sufijo, arreglo_ordenado.firstKey(),
+                            arreglo_ordenado.lastKey());
+
+                    if (pos == null) {
+                        System.out.println("El sufijo no esta presente en el arbol de sufijos");
+                    } else {
+                        System.out.println("El sufijo se encuetra en la posicion: " + pos + " de la cadena original.");
+                    }
+                    break;
+
+                case 3:
+                    tally = new HashMap<>();
+                    lf = new ArrayList<>();
+
+                    lf = LF_index(arreglo_ordenado, secuencia);
+                    tally = calcular_tally_values(lf);
+
+                    if (lf != null && tally != null) {
+                        for (String[] arreglo : lf) {
+                            System.out.println(Arrays.toString(arreglo));
+                        }
+
+                        for (Map.Entry<String, List<Integer>> entry : tally.entrySet()) {
+                            System.out.println("Carácter: " + entry.getKey() + " -> " + entry.getValue());
+                        }
+                        System.out.println("Indice cargado exitosamente.");
+                    } else {
+                        System.out.println("Error cargando el indice FM.");
+                    }
+
+                    break;
+
+                case 4:
+
+                    Integer i = 0;
+                    for (String segmento : segmentos) {
+                        System.out.println("Posicion del segmento: " + i + " -> Segmento: " + segmento);
+                        i += 1;
+                    }
+                    System.out.println("Escriba la posicion segmento del fastq que desea buscar en el indice FM: ");
+                    Integer pos_seg = Integer.valueOf(scanner_p4.nextLine());
+
+                    String seg = segmentos.get(pos_seg);
+
+                    Object[] resultado = buscar_subcadena_indice_FM(tally, lf, seg);
+                    if ((boolean) resultado[0]) {
+                        System.out.println(
+                                "Subcadena '" + seg + "' encontrada en la posición del sufijo: " + resultado[1]);
+                    } else {
+                        System.out.println("Subcadena '" + seg + "' no encontrada.");
+                    }
+                    break;
+                case 5:
+                    System.out.println("Saliendo...");
+                    salir = true;
+                    break;
+                default:
+                    System.out.println("Opción no válida. Intenta de nuevo.");
+            }
         }
 
-        //System.out.println(burrows_weller_transformed(palabra));
+        scanner.close();
+        scanner_p0_1.close();
+        scanner_p0_2.close();
+        scanner_p2.close();
+        scanner_p4.close();
 
-        //System.out.println(busqueda_binaria(hello, "I", hello.firstKey(), hello.lastKey()));
+        // String palabra = "abaaba$";
+        // HashMap<String, Integer> hola = sufijos(palabra);
 
-        //System.out.println(leer_fasta("data/sequence.fasta"));
-        //System.out.println(leer_fastq("data/ERR10088338.fastq.gz"));
+        // TreeMap<String, Integer> hello = sorting(hola);
 
-        List<String[]> lf_index = LF_index(hello, palabra);
-        
-        Map<String, List<Integer>> tally = calcular_tally_values(lf_index);
+        // for (Map.Entry<String, Integer> en : hello.entrySet()) {
+        // String key = en.getKey();
+        // Integer val = en.getValue();
 
-        for (String[] arreglo : lf_index) {
-            System.out.println(Arrays.toString(arreglo));
-        }
+        // System.out.println(key + " " + val);
 
+        // }
 
-        Map<String, List<Integer>> tallyValues = calcular_tally_values(lf_index);
-        for (Map.Entry<String, List<Integer>> entry : tallyValues.entrySet()) {
-            System.out.println("Carácter: " + entry.getKey() + " -> " + entry.getValue());
-        }
+        // System.out.println(burrows_weller_transformed(palabra));
 
-        probarBusquedaSubcadena(tally, lf_index, "BA");
-        
+        // System.out.println(leer_fasta("data/sequence.fasta"));
+
+        // System.out.println(leer_fastq("data/ERR10088338.fastq.gz"));
     }
-
-    public static void probarBusquedaSubcadena(Map<String, List<Integer>> tally, List<String[]> lfIndex, String subcadena) {
-        Object[] resultado = buscar_subcadena_indice_FM(tally, lfIndex, subcadena);
-        if ((boolean) resultado[0]) {
-            System.out.println("Subcadena '" + subcadena + "' encontrada en la posición del sufijo: " + resultado[1]);
-        } else {
-            System.out.println("Subcadena '" + subcadena + "' no encontrada.");
-        }
-    }
-
 
     public static HashMap<String, Integer> sufijos(String secuencia) {
 
@@ -88,7 +207,8 @@ public class App {
         return tree_map;
     }
 
-    private static Integer busqueda_binaria(TreeMap<String, Integer> sufijos, String subcadena, String inicio, String fin) {
+    private static Integer busqueda_binaria(TreeMap<String, Integer> sufijos, String subcadena, String inicio,
+            String fin) {
         if (inicio == null || fin == null || inicio.equals(fin)) {
             return null; // No se encontró la subcadena
         }
@@ -113,20 +233,17 @@ public class App {
 
         if (medio.startsWith(subcadena)) {
             return sufijos.get(medio);
-        } 
-        else if (inicio.startsWith(subcadena)){
+        } else if (inicio.startsWith(subcadena)) {
             return sufijos.get(inicio);
-        }
-        else if (fin.startsWith(subcadena)){
+        } else if (fin.startsWith(subcadena)) {
             return sufijos.get(fin);
-        }
-        else if (medio.compareTo(subcadena) < 0) {
+        } else if (medio.compareTo(subcadena) < 0) {
             return busqueda_binaria(sufijos, subcadena, sufijos.higherKey(medio), fin);
         } else {
             return busqueda_binaria(sufijos, subcadena, inicio, sufijos.lowerKey(medio));
         }
     }
-    
+
     public static String burrows_weller_transformed(String secuencia) {
 
         String bw = "";
@@ -148,26 +265,25 @@ public class App {
 
     }
 
-    //[F, L, SA]
-    public static List<String[]> LF_index(TreeMap<String, Integer> sufijos_ordenados, String secuencia){
+    // [F, L, SA]
+    public static List<String[]> LF_index(TreeMap<String, Integer> sufijos_ordenados, String secuencia) {
 
         List<String[]> LF = new ArrayList<>();
         String[] arreglo = secuencia.toUpperCase().split("");
 
         String[] linea;
-        
+
         for (Map.Entry<String, Integer> en : sufijos_ordenados.entrySet()) {
             linea = new String[3];
             String key = en.getKey();
             Integer val = en.getValue();
-            linea[0]=key.split("")[0];
-            if(val != 0){
-                linea[1]=arreglo[val-1];
+            linea[0] = key.split("")[0];
+            if (val != 0) {
+                linea[1] = arreglo[val - 1];
+            } else {
+                linea[1] = arreglo[secuencia.length() - 1];
             }
-            else{
-                linea[1]=arreglo[secuencia.length()-1];
-            }
-            linea[2]=Integer.toString(val);
+            linea[2] = Integer.toString(val);
             LF.add(linea);
         }
 
@@ -193,7 +309,8 @@ public class App {
         for (int i = 0; i < lf_index.size(); i++) {
             String lastValue = lf_index.get(i)[1];
 
-            // Incrementar el conteo del carácter actual antes de actualizar los valores de tally
+            // Incrementar el conteo del carácter actual antes de actualizar los valores de
+            // tally
             currentCounts.put(lastValue, currentCounts.get(lastValue) + 1);
 
             // Actualizar los valores de tally
@@ -235,16 +352,16 @@ public class App {
         return -1; // No se encontró el carácter en la primera columna
     }
 
-    public static Object[] buscar_subcadena_indice_FM(Map<String, List<Integer>> tally, List<String[]> lfIndex, String subcadena) {
+    public static Object[] buscar_subcadena_indice_FM(Map<String, List<Integer>> tally, List<String[]> lfIndex,
+            String subcadena) {
         for (int start = 0; start < lfIndex.size(); start++) {
             int posicion = start;
-            
 
             boolean encontrado = true;
 
             for (int i = subcadena.length() - 1; i >= 0; i--) {
                 posicion = LF_mapping(tally, lfIndex, posicion);
-                if (posicion <= 0 || !lfIndex.get(posicion-1)[1].equals(String.valueOf(subcadena.charAt(i)))) {
+                if (posicion <= 0 || !lfIndex.get(posicion - 1)[1].equals(String.valueOf(subcadena.charAt(i)))) {
                     encontrado = false;
                     break;
                 }
@@ -252,19 +369,20 @@ public class App {
 
             if (encontrado) {
                 // Retornar la posición del sufijo donde se encontró la subcadena
-                return new Object[]{true, Integer.valueOf(lfIndex.get(posicion)[2])};
+                return new Object[] { true, Integer.valueOf(lfIndex.get(posicion)[2]) };
             }
         }
 
-        return new Object[]{false, -1}; // No se encontró la subcadena
+        return new Object[] { false, -1 }; // No se encontró la subcadena
     }
+
     public static Set<String> caracteres_diferentes(String secuencia) {
 
         Set<String> letras_unicas = new TreeSet<>();
 
         String[] arreglo = secuencia.replace("$", "").split("");
 
-        for(String c: arreglo) {
+        for (String c : arreglo) {
             letras_unicas.add(c);
         }
 
@@ -296,48 +414,54 @@ public class App {
     public static List<String> leer_fastq(String direccion_archivo) {
         List<String> fastq = new ArrayList<>();
 
-        if(direccion_archivo.contains(".gz")){
+        if (direccion_archivo.contains(".gz")) {
             try (GZIPInputStream gz = new GZIPInputStream(new FileInputStream(direccion_archivo));
-            BufferedReader br = new BufferedReader(new InputStreamReader(gz))) {
-                
+                    BufferedReader br = new BufferedReader(new InputStreamReader(gz))) {
+
                 String fastq_read = "";
                 String linea = br.readLine();
-    
-                while (linea != null) { 
-                    if(linea.contains("@")){
+
+                while (linea != null) {
+                    if (linea.contains("@")) {
                         linea = br.readLine();
-                        while(!linea.contains("+")){
+                        while (!linea.contains("+")) {
                             fastq_read = fastq_read + linea;
                             linea = br.readLine();
                         }
                     }
-                    fastq.add(fastq_read);
-                    fastq_read = "";
-                    linea = br.readLine();
+                    if (fastq_read.equals("")) {
+                        linea = br.readLine();
+                    } else {
+                        fastq.add(fastq_read);
+                        fastq_read = "";
+                    }
                 }
-    
+
             } catch (IOException e) {
                 e.printStackTrace();
             }
-        }
-        else {
+        } else {
             try (BufferedReader br = new BufferedReader(new FileReader(direccion_archivo))) {
                 String fastq_read = "";
                 String linea = br.readLine();
-    
-                while (linea != null) { 
-                    if(linea.contains("@")){
+
+                while (linea != null) {
+                    if (linea.contains("@")) {
                         linea = br.readLine();
-                        while(!linea.contains("+")){
+                        while (!linea.contains("+")) {
                             fastq_read = fastq_read + linea;
                             linea = br.readLine();
                         }
                     }
-                    fastq.add(fastq_read);
-                    fastq_read = "";
-                    linea = br.readLine();
+                    if (fastq_read.equals("")) {
+                        linea = br.readLine();
+                    } else {
+                        fastq.add(fastq_read);
+                        fastq_read = "";
+                    }
+
                 }
-    
+
             } catch (IOException e) {
                 e.printStackTrace();
             }
