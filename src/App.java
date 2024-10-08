@@ -408,7 +408,7 @@ public class App {
             e.printStackTrace();
         }
 
-        return fasta;
+        return fasta+"$";
     }
 
     public static List<String> leer_fastq(String direccion_archivo) {
